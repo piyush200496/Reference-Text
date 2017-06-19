@@ -1,0 +1,158 @@
+1) use mongodb w/o installing it on local machine using sandbox: https://mlab.com/
+The db name is pmdb. Now add a user to this db.
+user name: pm
+password: abc
+
+Create a new folder, say 'rest'. Now remain in this directory itself
+2) npm init  //Set entry point to app.js
+npm install express --save
+npm install mongoose --save
+npm install body-parser --save
+
+-  Mongoose is an ORM — Object Relational Mapper. The official ORM used for MongoDB to be precise. To break it down, we use an ORM to simplify the transfer of data between our application and the database. The body-parser module is just a middleware we use to parse our data sent through HTTP requests.
+
+3) create a file app.js (this is being done in rest directory)
+var express=require('express');
+var app=express(); //creates an express application
+module.exports=app;
+
+/*We use module.exports to make this app object visible to the rest of the program when we call for it using require()*/
+
+4) create server.js
+
+var app = require('./app');
+var port = process.env.PORT || 3000; //whatever is in the environment variable PORT, or //3000 if there's nothing there.
+
+var server = app.listen(port, function() {
+  console.log('Express server listening on port ' + port);
+});
+
+Make sure in powershell that you're in rest folder. Run node server. You should see a message.
+
+5) create db.js
+var mongoose=require('mongoose');
+mongoose.connect('mongodb://pm:abc@ds161001.mlab.com:61001/pmdb');
+
+6) Having done this, you now need to tell the app it has a connection available. Simply add a require() in the app.js,
+
+var express = require('express');
+var app = express();
+var db = require('./db'); //ADD THIS LINE
+
+7) creating a new folder named user (i.e subfolder in rest directory). This folder will contain all files in any way related to our communication with the database regarding users. You’ll start by creating a user model. This model will serve as a blueprint showing what all users in your database will look like. Create a file named User.js in user folder
+
+var mongoose = require('mongoose');  
+var UserSchema = new mongoose.Schema({  
+  name: String,
+  email: String,
+  password: String
+});
+mongoose.model('User', UserSchema);
+module.exports = mongoose.model('User');
+
+
+You’re creating a schema which will give every user in the database a specific look. A user will have a name, an email and a password. By specifying mongoose.model('User', UserSchema) you’re binding the layout of the schema to the model which is named 'User' . This is what you will be using to access the data in the database, and that’s exactly why you are exporting it to use in other parts of your program.
+
+
+8) Create another file, and name it UserController.js (agian in user folder) . You’ll be naming it with a controller in its name, not only for simplicity, but also because it will contain the actions which control the flow of data into and from your database.
+
+var express = require('express');
+var router = express.Router();
+var bodyParser = require('body-parser');
+router.use(bodyParser.urlencoded({ extended: true }));
+var User = require('./User');
+// ADD THIS PART
+// CREATES A NEW USER
+router.post('/', function (req, res) { //the 1st arg is the route whihc will
+    //be linked to a function. THe second arg is that funcction.
+    User.create({
+            name : req.body.name,
+            email : req.body.email,
+            password : req.body.password
+        }, 
+        function (err, user) {
+            if (err) return res.status(500).send("There was a problem adding the information to the database.");
+            res.status(200).send(user);
+        });
+});
+// RETURNS ALL THE USERS IN THE DATABASE
+router.get('/', function (req, res) {
+    User.find({}, function (err, users) {  
+        //the {} present as 1st arg defines the requirements
+        //which must be fulfilled in order to return values. Here, it's empty.
+        //this will reutrn all the users from the database.
+        if (err) return res.status(500).send("There was a problem finding the users.");
+        res.status(200).send(users);
+    });
+});
+module.exports = router;
+
+9) Now, you need to let the app know it has a user controller. Add this to your app.js.
+var express = require('express');
+var app = express();
+var db = require('./db');
+// ADD THESE TWO LINES
+var UserController = require('./user/UserController');
+app.use('/users', UserController);
+module.exports = app;
+
+
+You’re requiring the user controller and with app.use telling the app to link it to the route /users. Now, the / route within your user controller will get mapped to /users. 
+
+
+
+10) OPen Postman. Type http://localhost:3000/users. Make it post request and in body, select x-www-form-urlencoded. Give the following key value pairs:
+name:dasd
+email:dadsasd
+passowrd:12321
+
+Then send.
+
+Similarly, set type to Get and send. You should get json response.
+-------------
+------------
+9) you’ve set up a server, configured your application, connected it to a database and created two APIs for communicating with the database. There are three more APIs left to implement. Retrieving a single user from the database, updating a user, and finally, deleting a user. All of these have one thing in common. They will all have a query parameter, often called a route parameter. 
+
+Add the following to UserController.js
+
+// GETS A SINGLE USER FROM THE DATABASE
+router.get('/:id', function (req, res) {
+    User.findById(req.params.id, function (err, user) {
+        if (err) return res.status(500).send("There was a problem finding the user.");
+        if (!user) return res.status(404).send("No user found.");
+        res.status(200).send(user);
+    });
+});
+
+
+You’ve now added another GET request, but look at the route, the router.get method’s first parameter. It now has a value consisting of a colon followed by some text. This notation means that it’s a placeholder for a query parameter, a simple value, which will be sent along with the request. The value passed to '/:id' will be accessible through the req.params object. Where the name of the query parameter will get mapped to a property with the same name on the req.params object.
+
+.findById which will only want the ID by which it will return a user. The ID is the first parameter and the callback function is the second. Can you see a pattern emerging? All of the Mongoose methods want a value as a first parameter and a callback function as the last. This callback will be called after the database has returned the queried value. The same pattern can be seen with the DELETE request as well.
+
+Add the following to UserController.js:
+
+// DELETES A USER FROM THE DATABASE
+router.delete('/:id', function (req, res) {
+    User.findByIdAndRemove(req.params.id, function (err, user) {
+        if (err) return res.status(500).send("There was a problem deleting the user.");
+        res.status(200).send("User "+ user.name +" was deleted.");
+    });
+});
+
+
+Now add update user code to UserController.js
+
+// UPDATES A SINGLE USER IN THE DATABASE
+router.put('/:id', function (req, res) {
+    
+    User.findByIdAndUpdate(req.params.id, req.body, {new: true}, function (err, user) {
+        if (err) return res.status(500).send("There was a problem updating the user.");
+        res.status(200).send(user);
+    });
+});
+
+
+//Now try url in postman such as http://localhost:3000/users/3124r1424e with type as get
+ or 
+ http://localhost:3000/users/593115c779475a1844d2d403 with type as delete
+
