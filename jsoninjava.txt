@@ -1,0 +1,188 @@
+1) In Eclipse => File => New => Dynamic Web Project. Name it as 'sampleapi'.
+2) Now convert Project to Maven Project so we could add required .jar files as dependencies.
+
+Steps: Right click on project -> Configure -> Convert to Maven Project.
+
+3) Open pom.xml file and add below dependencies.
+
+asm.jar
+jersey-bundle.jar
+json.jar
+jersey-server.jar
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>CrunchifyRESTJerseyExample</groupId>
+	<artifactId>CrunchifyRESTJerseyExample</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>war</packaging>
+	<build>
+		<sourceDirectory>src</sourceDirectory>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.1</version>
+				<configuration>
+					<source>1.7</source>
+					<target>1.7</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>asm</groupId>
+			<artifactId>asm</artifactId>
+			<version>3.3.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.jersey</groupId>
+			<artifactId>jersey-bundle</artifactId>
+			<version>1.19</version>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20140107</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.jersey</groupId>
+			<artifactId>jersey-server</artifactId>
+			<version>1.19</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.jersey</groupId>
+			<artifactId>jersey-core</artifactId>
+			<version>1.19</version>
+		</dependency>
+	</dependencies>
+</project>
+
+4) clean the project to add these new dependencies
+5) update web.xml with the following code:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+	version="3.0">
+	<display-name>sampleapi</display-name>
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.htm</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>default.html</welcome-file>
+		<welcome-file>default.htm</welcome-file>
+		<welcome-file>default.jsp</welcome-file>
+	</welcome-file-list>
+ 
+	<servlet>
+		<servlet-name>Jersey Web Application </servlet-name>
+		<servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer </servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Jersey Web Application </servlet-name>
+//	<url-pattern>/sampleapi/*</url-pattern>
+	</servlet-mapping>
+</web-app>
+
+6) Create class CtoFService.java
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+ 
+@Path("/ctofservice")
+public class CtoFService {
+	@GET
+	@Produces("application/xml")
+	public String convertCtoF() {
+ 
+		Double fahrenheit;
+		Double celsius = 36.8;
+		fahrenheit = ((celsius * 9) / 5) + 32;
+ 
+		String result = "@Produces(\"application/xml\") Output: \n\nC to F Converter Output: \n\n" + fahrenheit;
+		return "<ctofservice>" + "<celsius>" + celsius + "</celsius>" + "<ctofoutput>" + result + "</ctofoutput>" + "</ctofservice>";
+	}
+ 
+	@Path("{c}")
+	@GET
+	@Produces("application/xml")
+	public String convertCtoFfromInput(@PathParam("c") Double c) {
+		Double fahrenheit;
+		Double celsius = c;
+		fahrenheit = ((celsius * 9) / 5) + 32;
+ 
+		String result = "@Produces(\"application/xml\") Output: \n\nC to F Converter Output: \n\n" + fahrenheit;
+		return "<ctofservice>" + "<celsius>" + celsius + "</celsius>" + "<ctofoutput>" + result + "</ctofoutput>" + "</ctofservice>";
+	}
+}
+
+7) Create class FtoCService.java
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Response;
+import org.json.JSONException;
+import org.json.JSONObject;
+ 
+@Path("/ftocservice")
+public class FtoCService {
+ 
+	  @GET
+	  @Produces("application/json")
+	  public Response convertFtoC() throws JSONException {
+ 
+		JSONObject jsonObject = new JSONObject();
+		Double fahrenheit = 98.24;
+		Double celsius;
+		celsius = (fahrenheit - 32)*5/9; 
+		jsonObject.put("F Value", fahrenheit); 
+		jsonObject.put("C Value", celsius);
+ 
+		String result = "@Produces(\"application/json\") Output: \n\nF to C Converter Output: \n\n" + jsonObject;
+		return Response.status(200).entity(result).build();
+	  }
+ 
+	  @Path("{f}")
+	  @GET
+	  @Produces("application/json")
+	  public Response convertFtoCfromInput(@PathParam("f") float f) throws JSONException {
+ 
+		JSONObject jsonObject = new JSONObject();
+		float celsius;
+		celsius =  (f - 32)*5/9; 
+		jsonObject.put("F Value", f); 
+		jsonObject.put("C Value", celsius);
+ 
+		String result = "@Produces(\"application/json\") Output: \n\nF to C Converter Output: \n\n" + jsonObject;
+		return Response.status(200).entity(result).build();
+	  }
+}
+Note: Window-preferences-java- select jdk 1.7 option. And once you're done with this example, remember to set it back to jre 1.8. This is being done bcoz the src and target in pom.xml is 1.7
+8) 1.Project -> Clean
+ 2.Project -> Right click -> Maven -> Update Project
+3. Project -> Right click -> Run As.. -> Maven Build (option 5) -> Add "clean install" -> Run
+In maven build, set the goals to "clean install". click apply then ok.
+
+
+9) Now, in order to run this on the server:
+Project-> project facets-> runtimes->new->Apache tomcat v7.0->next-> JRE:1.8
+put a tick on this server runtime environment and apply. then ok. (Say this server rntime env has the name apache tomcat v7.0(4))
+
+Now click on one of the servers you have created by opening the servers tab, say Tomcat v7.0 Server at localhost. Double click on it. change the runtime environment to apache tomcat v7.0(4). ctrl+s
+Now right click on your project , run on server and select the server whose run time env is apache tomcat v7.0(4) i.e Tomcat v7.0 Server.
+
+10) open the link: http://localhost:9091/sampleapi/sampleapi/ctofservice
+or
+http://localhost:9091/sampleapi/sampleapi/ctofservice/'some no without the quotes i.e argument'
+or
+http://localhost:9091/sampleapi/sampleapi/ftocservice
+
+ftoc link returns json response whiel ctof returns xml response.
